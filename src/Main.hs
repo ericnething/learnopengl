@@ -47,7 +47,7 @@ main = do
 
   game <- initResources initialGameState
   
-  loop window Set.empty initialGameState
+  loop window Set.empty game
 
   SDL.glDeleteContext renderer
   SDL.destroyWindow window
