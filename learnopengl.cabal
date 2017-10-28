@@ -23,3 +23,5 @@ executable learnopengl
                      , bytestring
                      , gl
                      , sdl2
+                     , vector
+                     , JuicyPixels

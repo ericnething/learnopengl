@@ -15,17 +15,21 @@ import qualified Data.Set as Set
 import           Data.Set (Set)
 import qualified Data.ByteString as BS (readFile, useAsCString)
 import           Data.Char (chr)
+import           Codec.Picture (readImage, convertRGB8, Image(..))
+import qualified Data.Vector.Storable as VS
 
 import           Shader
 import           Util
 
 data Game = Game
   { runProgram :: GLuint
+  , texture :: GLuint
+  , vao :: GLuint
   , gameValue :: GLfloat
   } deriving Show
 
 initialGameState :: Game
-initialGameState = Game 0 1.0
+initialGameState = Game 0 0 0 1.0
 
 main :: IO ()
 main = do
@@ -76,14 +80,23 @@ draw window keys game = do
   glClearColor 0 1 0 1
   glClear GL_COLOR_BUFFER_BIT
 
+  glUseProgram (runProgram game)
+
+  -- Bind
+  glBindTexture GL_TEXTURE_2D (texture game)
+  glBindVertexArray (vao game)
+
   -- Uniforms
   uniColor <- withCString "triangleColor" $ glGetUniformLocation (runProgram game)
   glUniform3f uniColor (gameValue game) 0 0
   
   -- Draw
-  -- glDrawArrays GL_TRIANGLES 0 3
   glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_INT nullPtr
-  
+
+  -- Unbind
+  glBindVertexArray 0
+  glBindTexture GL_TEXTURE_2D 0
+
   SDL.glSwapWindow window
 
 escapeKey :: SDL.Keysym
@@ -126,10 +139,11 @@ vertices =
 
 square :: [GLfloat]
 square =
-  [ -0.5,  0.5 -- top    left
-  ,  0.5,  0.5 -- top    right
-  ,  0.5, -0.5 -- bottom right
-  , -0.5, -0.5 -- bottom left
+  -- position     textures
+  [ -0.5,  0.5,   0, 1   -- left  top
+  ,  0.5,  0.5,   1, 1   -- right top
+  ,  0.5, -0.5,   1, 0   -- right bottom
+  , -0.5, -0.5,   0, 0   -- left  bottom
   ]
 
 squareIndices :: [GLuint]
@@ -159,6 +173,19 @@ initResources game = do
   withArray squareIndices $ \ptr ->
     glBufferData GL_ELEMENT_ARRAY_BUFFER (arraySize squareIndices) (castPtr ptr) GL_STATIC_DRAW
 
+  -- Texture
+  texture <- overPtr $ glGenTextures 1
+  glBindTexture GL_TEXTURE_2D texture
+  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR
+  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR
+  Image width height texData <- convertRGB8 <$>
+                                (either (error "texture failed to load") pure =<<
+                                readImage "src/textures/container.jpg")
+  VS.unsafeWith texData $ \ptr ->
+    glTexImage2D GL_TEXTURE_2D 0 GL_RGB (fromIntegral width) (fromIntegral height) 0 GL_RGB GL_UNSIGNED_BYTE (castPtr ptr)
+  glGenerateMipmap GL_TEXTURE_2D
+  glBindTexture GL_TEXTURE_2D 0
+
   -- Vertex Shader
   vertexShader <- glCreateShader GL_VERTEX_SHADER
   compileShader vertexShader "src/shaders/triangle.vertex.glsl"
@@ -172,15 +199,25 @@ initResources game = do
   glUseProgram program
 
   -- Link Vertex data with Attributes
+  let floatSize = sizeOf (1.0 :: GLfloat)
   posAttrib <- withCString "position" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral posAttrib) 2 GL_FLOAT GL_FALSE 0 nullPtr
+  glVertexAttribPointer (fromIntegral posAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 4 * floatSize) nullPtr
   glEnableVertexAttribArray (fromIntegral posAttrib)
+
+  -- Link Texture data with Attributes
+  textureAttrib <- withCString "texCoord" $ glGetAttribLocation program
+  glVertexAttribPointer (fromIntegral textureAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 4 * floatSize) (plusPtr nullPtr (2 * floatSize))
+  glEnableVertexAttribArray (fromIntegral textureAttrib)
 
   -- Uniforms
   uniColor <- withCString "triangleColor" $ glGetUniformLocation program
   glUniform3f uniColor 1 0 0
 
-  return $ game { runProgram = program }
+  return $ game
+    { runProgram = program
+    , texture = texture
+    , vao = vao
+    }
 
 
 deriving instance Ord SDL.Keysym

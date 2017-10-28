@@ -1,10 +1,12 @@
 # version 150
 
 uniform vec3 triangleColor;
+in vec2 textureCoord;
 
 out vec4 outColor;
+uniform sampler2D ourTexture;
 
 void main()
 {
-        outColor = vec4(triangleColor, 1.0);
+        outColor = texture(ourTexture, textureCoord);
 }
