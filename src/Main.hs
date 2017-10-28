@@ -77,7 +77,7 @@ updateGame game keys = return . newGame $ Set.foldr check (gameValue game) keys
 draw :: SDL.Window -> Set SDL.Keysym -> Game -> IO ()
 draw window keys game = do
 
-  glClearColor 0 1 0 1
+  glClearColor 0.1 0.2 0.3 1
   glClear GL_COLOR_BUFFER_BIT
 
   glUseProgram (runProgram game)
@@ -139,11 +139,11 @@ vertices =
 
 square :: [GLfloat]
 square =
-  -- position     textures
-  [ -0.5,  0.5,   0, 1   -- left  top
-  ,  0.5,  0.5,   1, 1   -- right top
-  ,  0.5, -0.5,   1, 0   -- right bottom
-  , -0.5, -0.5,   0, 0   -- left  bottom
+  -- position     colors     textures
+  [ -0.5,  0.5,   1, 1, 0,   0, 1   -- left  top
+  ,  0.5,  0.5,   1, 0, 0,   1, 1   -- right top
+  ,  0.5, -0.5,   0, 1, 0,   1, 0   -- right bottom
+  , -0.5, -0.5,   0, 0, 1,   0, 0   -- left  bottom
   ]
 
 squareIndices :: [GLuint]
@@ -201,13 +201,18 @@ initResources game = do
   -- Link Vertex data with Attributes
   let floatSize = sizeOf (1.0 :: GLfloat)
   posAttrib <- withCString "position" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral posAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 4 * floatSize) nullPtr
+  glVertexAttribPointer (fromIntegral posAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 7 * floatSize) nullPtr
   glEnableVertexAttribArray (fromIntegral posAttrib)
 
   -- Link Texture data with Attributes
   textureAttrib <- withCString "texCoord" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral textureAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 4 * floatSize) (plusPtr nullPtr (2 * floatSize))
+  glVertexAttribPointer (fromIntegral textureAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 7 * floatSize) (plusPtr nullPtr (5 * floatSize))
   glEnableVertexAttribArray (fromIntegral textureAttrib)
+
+  -- Link Color data with Attributes
+  colorAttrib <- withCString "inColor" $ glGetAttribLocation program
+  glVertexAttribPointer (fromIntegral colorAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 7 * floatSize) (plusPtr nullPtr (2 * floatSize))
+  glEnableVertexAttribArray (fromIntegral colorAttrib)
 
   -- Uniforms
   uniColor <- withCString "triangleColor" $ glGetUniformLocation program
