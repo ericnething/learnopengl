@@ -3,14 +3,14 @@ module Shader (
   createProgram
   ) where
 
-import Control.Monad (when)
-import Graphics.GL
-import Foreign
-import Foreign.C
+import           Control.Monad (when)
+import           Graphics.GL
+import           Foreign
+import           Foreign.C
 import qualified Data.ByteString as BS (readFile, useAsCString)
-import Data.ByteString.Char8 as BS (pack)
-import Util
-import Data.Char (chr)
+import           Data.ByteString.Char8 as BS (pack)
+import           Util
+import           Data.Char (chr)
 
 type Shader = GLuint
 type Program = GLuint

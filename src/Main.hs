@@ -4,26 +4,25 @@
 
 module Main where
 
-import Graphics.GL
+import           Graphics.GL
 import qualified SDL.Raw as SDL
 import           SDL.Raw.Enum as SDL
-import Foreign
-import Foreign.C
-import Control.Monad (unless)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import           Foreign
+import           Foreign.C
+import           Control.Monad (unless)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.Set as Set
 import           Data.Set (Set)
 import qualified Data.ByteString as BS (readFile, useAsCString)
-import Data.Char (chr)
+import           Data.Char (chr)
 
-import Shader
-import Util
+import           Shader
+import           Util
 
-data Game
-  = Game
-    { runProgram :: GLuint
-    , gameValue :: GLfloat
-    } deriving Show
+data Game = Game
+  { runProgram :: GLuint
+  , gameValue :: GLfloat
+  } deriving Show
 
 initialGameState :: Game
 initialGameState = Game 0 1.0
