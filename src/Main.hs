@@ -78,10 +78,11 @@ draw window keys game = do
 
   -- Uniforms
   uniColor <- withCString "triangleColor" $ glGetUniformLocation (runProgram game)
-  glUniform3f uniColor 0.0 0.0 (gameValue game)
+  glUniform3f uniColor (gameValue game) 0 0
   
   -- Draw
-  glDrawArrays GL_TRIANGLES 0 3
+  -- glDrawArrays GL_TRIANGLES 0 3
+  glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_INT nullPtr
   
   SDL.glSwapWindow window
 
@@ -123,6 +124,22 @@ vertices =
   , -0.5, -0.5
   ]
 
+square :: [GLfloat]
+square =
+  [ -0.5,  0.5 -- top    left
+  ,  0.5,  0.5 -- top    right
+  ,  0.5, -0.5 -- bottom right
+  , -0.5, -0.5 -- bottom left
+  ]
+
+squareIndices :: [GLuint]
+squareIndices =
+  [ 0, 1, 2
+  , 2, 3, 0
+  ]
+
+arraySize array = fromIntegral $ length array * sizeOf (1.0 :: GLfloat)
+
 initResources :: Game -> IO Game
 initResources game = do
 
@@ -133,9 +150,14 @@ initResources game = do
   -- VBO
   vbo <- overPtr $ glGenBuffers 1
   glBindBuffer GL_ARRAY_BUFFER vbo
-  let size = fromIntegral $ length vertices * sizeOf (1.0 :: GLfloat)
-  withArray vertices $ \ptr ->
-    glBufferData GL_ARRAY_BUFFER size (castPtr ptr) GL_STATIC_DRAW
+  withArray square $ \ptr ->
+    glBufferData GL_ARRAY_BUFFER (arraySize square) (castPtr ptr) GL_STATIC_DRAW
+
+  -- EBO
+  ebo <- overPtr $ glGenBuffers 1
+  glBindBuffer GL_ELEMENT_ARRAY_BUFFER ebo
+  withArray squareIndices $ \ptr ->
+    glBufferData GL_ELEMENT_ARRAY_BUFFER (arraySize squareIndices) (castPtr ptr) GL_STATIC_DRAW
 
   -- Vertex Shader
   vertexShader <- glCreateShader GL_VERTEX_SHADER
