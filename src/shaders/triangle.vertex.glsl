@@ -1,6 +1,6 @@
 # version 150
 
-in vec2 position;
+in vec3 position;
 in vec2 texCoord;
 in vec3 inColor;
 
@@ -14,7 +14,7 @@ out vec3 color;
 
 void main()
 {
-        gl_Position = projection * view * model * transform * vec4(position, 0.0, 1.0);
+        gl_Position = projection * view * model * transform * vec4(position, 1.0);
         textureCoord = texCoord;
         color = inColor;
 }

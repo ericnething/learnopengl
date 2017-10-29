@@ -170,10 +170,10 @@ vertices =
 square :: [GLfloat]
 square =
   -- position     colors     textures
-  [ -0.5,  0.5,   1, 1, 0,   0, 1   -- left  top
-  ,  0.5,  0.5,   1, 0, 0,   1, 1   -- right top
-  ,  0.5, -0.5,   0, 1, 0,   1, 0   -- right bottom
-  , -0.5, -0.5,   0, 0, 1,   0, 0   -- left  bottom
+  [ -0.5,  0.5, 0,   1, 1, 0,   0, 1   -- left  top
+  ,  0.5,  0.5, 0,   1, 0, 0,   1, 1   -- right top
+  ,  0.5, -0.5, 0,   0, 1, 0,   1, 0   -- right bottom
+  , -0.5, -0.5, 0,   0, 0, 1,   0, 0   -- left  bottom
   ]
 
 squareIndices :: [GLuint]
@@ -233,17 +233,17 @@ initResources game = do
   -- Link Vertex data with Attributes
   let floatSize = sizeOf (1.0 :: GLfloat)
   posAttrib <- withCString "position" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral posAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 7 * floatSize) nullPtr
+  glVertexAttribPointer (fromIntegral posAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 8 * floatSize) nullPtr
   glEnableVertexAttribArray (fromIntegral posAttrib)
 
   -- Link Texture data with Attributes
   textureAttrib <- withCString "texCoord" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral textureAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 7 * floatSize) (plusPtr nullPtr (5 * floatSize))
+  glVertexAttribPointer (fromIntegral textureAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 8 * floatSize) (plusPtr nullPtr (6 * floatSize))
   glEnableVertexAttribArray (fromIntegral textureAttrib)
 
   -- Link Color data with Attributes
   colorAttrib <- withCString "inColor" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral colorAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 7 * floatSize) (plusPtr nullPtr (2 * floatSize))
+  glVertexAttribPointer (fromIntegral colorAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 8 * floatSize) (plusPtr nullPtr (3 * floatSize))
   glEnableVertexAttribArray (fromIntegral colorAttrib)
 
   -- Transformation matrix pointer
