@@ -92,9 +92,9 @@ draw window keys game = do
 
   -- Uniforms
   let transformMatrix = mkTransformationMat identity (gameValue game)
-  poke (transformP game) (transpose transformMatrix)
+  poke (transformP game) transformMatrix
   transform <- withCString "transform" $ glGetUniformLocation (runProgram game)
-  glUniformMatrix4fv transform 1 GL_FALSE (castPtr (transformP game))
+  glUniformMatrix4fv transform 1 GL_TRUE (castPtr (transformP game))
   
   -- Draw
   glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_INT nullPtr
