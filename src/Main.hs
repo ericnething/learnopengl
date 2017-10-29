@@ -17,6 +17,7 @@ import qualified Data.ByteString as BS (readFile, useAsCString)
 import           Data.Char (chr)
 import           Codec.Picture (readImage, convertRGB8, Image(..))
 import qualified Data.Vector.Storable as VS
+import           Linear
 
 import           Shader
 import           Util
@@ -25,11 +26,12 @@ data Game = Game
   { runProgram :: GLuint
   , texture :: GLuint
   , vao :: GLuint
-  , gameValue :: GLfloat
+  , transformP :: Ptr (M44 GLfloat)
+  , gameValue :: V3 GLfloat
   } deriving Show
 
 initialGameState :: Game
-initialGameState = Game 0 0 0 1.0
+initialGameState = Game 0 0 0 nullPtr (V3 0.0 0.0 0.0)
 
 main :: IO ()
 main = do
@@ -69,9 +71,11 @@ loop window keys game = do
 updateGame :: Game -> Set SDL.Keysym -> IO Game
 updateGame game keys = return . newGame $ Set.foldr check (gameValue game) keys
   where check key acc = case SDL.keysymKeycode key of
-          SDLK_UP   -> acc + 0.01
-          SDLK_DOWN -> acc - 0.01
-          _         -> acc
+          SDLK_UP    -> acc ^+^ V3 0.0  0.01 0.0
+          SDLK_DOWN  -> acc ^-^ V3 0.0  0.01 0.0
+          SDLK_RIGHT -> acc ^+^ V3 0.01 0.0  0.0
+          SDLK_LEFT  -> acc ^-^ V3 0.01 0.0  0.0
+          _          -> acc
         newGame v = game { gameValue = v }
 
 draw :: SDL.Window -> Set SDL.Keysym -> Game -> IO ()
@@ -87,8 +91,10 @@ draw window keys game = do
   glBindVertexArray (vao game)
 
   -- Uniforms
-  uniColor <- withCString "triangleColor" $ glGetUniformLocation (runProgram game)
-  glUniform3f uniColor (gameValue game) 0 0
+  let transformMatrix = mkTransformationMat identity (gameValue game)
+  poke (transformP game) (transpose transformMatrix)
+  transform <- withCString "transform" $ glGetUniformLocation (runProgram game)
+  glUniformMatrix4fv transform 1 GL_FALSE (castPtr (transformP game))
   
   -- Draw
   glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_INT nullPtr
@@ -214,14 +220,14 @@ initResources game = do
   glVertexAttribPointer (fromIntegral colorAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 7 * floatSize) (plusPtr nullPtr (2 * floatSize))
   glEnableVertexAttribArray (fromIntegral colorAttrib)
 
-  -- Uniforms
-  uniColor <- withCString "triangleColor" $ glGetUniformLocation program
-  glUniform3f uniColor 1 0 0
+  -- Transformation matrix pointer
+  transformP <- malloc
 
   return $ game
     { runProgram = program
     , texture = texture
     , vao = vao
+    , transformP = transformP
     }
 
 

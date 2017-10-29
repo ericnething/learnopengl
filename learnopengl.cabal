@@ -25,3 +25,4 @@ executable learnopengl
                      , sdl2
                      , vector
                      , JuicyPixels
+                     , linear
