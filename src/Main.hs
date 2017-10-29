@@ -53,6 +53,8 @@ main = do
 
   renderer <- SDL.glCreateContext window
 
+  glEnable GL_DEPTH_TEST
+
   game <- initResources initialGameState
   
   loop window Set.empty game
@@ -89,6 +91,7 @@ draw window keys game = do
 
   glClearColor 0.1 0.2 0.3 1
   glClear GL_COLOR_BUFFER_BIT
+  glClear GL_DEPTH_BUFFER_BIT
 
   glUseProgram (runProgram game)
 
