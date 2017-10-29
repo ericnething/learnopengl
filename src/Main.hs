@@ -23,15 +23,18 @@ import           Shader
 import           Util
 
 data Game = Game
-  { runProgram :: GLuint
-  , texture :: GLuint
-  , vao :: GLuint
-  , transformP :: Ptr (M44 GLfloat)
-  , gameValue :: V3 GLfloat
+  { runProgram  :: GLuint
+  , texture     :: GLuint
+  , vao         :: GLuint
+  , transformP  :: Ptr (M44 GLfloat)
+  , modelP      :: Ptr (M44 GLfloat)
+  , viewP       :: Ptr (M44 GLfloat)
+  , projectionP :: Ptr (M44 GLfloat)
+  , gameValue   :: V3 GLfloat
   } deriving Show
 
 initialGameState :: Game
-initialGameState = Game 0 0 0 nullPtr (V3 0.0 0.0 0.0)
+initialGameState = Game 0 0 0 nullPtr nullPtr nullPtr nullPtr (V3 0.0 0.0 0.0)
 
 main :: IO ()
 main = do
@@ -78,6 +81,9 @@ updateGame game keys = return . newGame $ Set.foldr check (gameValue game) keys
           _          -> acc
         newGame v = game { gameValue = v }
 
+-- | Convert degrees to radians
+toRadians = (*) (pi / 180)
+
 draw :: SDL.Window -> Set SDL.Keysym -> Game -> IO ()
 draw window keys game = do
 
@@ -95,7 +101,22 @@ draw window keys game = do
   poke (transformP game) transformMatrix
   transform <- withCString "transform" $ glGetUniformLocation (runProgram game)
   glUniformMatrix4fv transform 1 GL_TRUE (castPtr (transformP game))
-  
+
+  let modelMatrix = mkTransformation (axisAngle (V3 1 0 0) (toRadians (-55))) (V3 0 0 0)
+  poke (modelP game) modelMatrix
+  model <- withCString "model" $ glGetUniformLocation (runProgram game)
+  glUniformMatrix4fv model 1 GL_TRUE (castPtr (modelP game))
+
+  let viewMatrix = mkTransformationMat identity (V3 0 0 (-3.0))
+  poke (viewP game) viewMatrix
+  view <- withCString "view" $ glGetUniformLocation (runProgram game)
+  glUniformMatrix4fv view 1 GL_TRUE (castPtr (viewP game))
+
+  let projectionMatrix = perspective (toRadians 45) (800/600) 0.1 100.0
+  poke (projectionP game) projectionMatrix
+  projection <- withCString "projection" $ glGetUniformLocation (runProgram game)
+  glUniformMatrix4fv projection 1 GL_TRUE (castPtr (projectionP game))
+
   -- Draw
   glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_INT nullPtr
 
@@ -224,12 +245,18 @@ initResources game = do
 
   -- Transformation matrix pointer
   transformP <- malloc
+  modelP <- malloc
+  viewP <- malloc
+  projectionP <- malloc
 
   return $ game
     { runProgram = program
     , texture = texture
     , vao = vao
     , transformP = transformP
+    , modelP = modelP
+    , viewP = viewP
+    , projectionP = projectionP
     }
 
 
