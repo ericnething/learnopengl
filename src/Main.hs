@@ -17,6 +17,7 @@ import qualified Data.ByteString as BS (readFile, useAsCString)
 import           Data.Char (chr)
 import           Codec.Picture (readImage, convertRGB8, Image(..))
 import qualified Data.Vector.Storable as VS
+import           Data.Foldable (forM_)
 import           Linear
 
 import           Shader
@@ -105,10 +106,7 @@ draw window keys game = do
   transform <- withCString "transform" $ glGetUniformLocation (runProgram game)
   glUniformMatrix4fv transform 1 GL_TRUE (castPtr (transformP game))
 
-  let modelMatrix = mkTransformation (axisAngle (V3 1 0 0) (toRadians (-55))) (V3 0 0 0)
-  poke (modelP game) modelMatrix
   model <- withCString "model" $ glGetUniformLocation (runProgram game)
-  glUniformMatrix4fv model 1 GL_TRUE (castPtr (modelP game))
 
   let viewMatrix = mkTransformationMat identity (V3 0 0 (-3.0))
   poke (viewP game) viewMatrix
@@ -121,7 +119,12 @@ draw window keys game = do
   glUniformMatrix4fv projection 1 GL_TRUE (castPtr (projectionP game))
 
   -- Draw
-  glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_INT nullPtr
+  -- glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_INT nullPtr
+  forM_ cubes $ \cube -> do
+    let modelMatrix = mkTransformation (axisAngle (V3 1 0 0) (toRadians (-55))) cube
+    poke (modelP game) modelMatrix
+    glUniformMatrix4fv model 1 GL_TRUE (castPtr (modelP game))
+    glDrawArrays GL_TRIANGLES 0 36
 
   -- Unbind
   glBindVertexArray 0
@@ -167,13 +170,72 @@ vertices =
   , -0.5, -0.5
   ]
 
+-- square :: [GLfloat]
+-- square =
+--   -- position     colors     textures
+--   [ -0.5,  0.5, 0.5,   1, 1, 0,   0, 1   -- left  top
+--   ,  0.5,  0.5, 0.5,   1, 0, 0,   1, 1   -- right top
+--   ,  0.5, -0.5, 0.5,   0, 1, 0,   1, 0   -- right bottom
+--   , -0.5, -0.5, 0.5,   0, 0, 1,   0, 0   -- left  bottom
+--   ]
+
 square :: [GLfloat]
 square =
-  -- position     colors     textures
-  [ -0.5,  0.5, 0,   1, 1, 0,   0, 1   -- left  top
-  ,  0.5,  0.5, 0,   1, 0, 0,   1, 1   -- right top
-  ,  0.5, -0.5, 0,   0, 1, 0,   1, 0   -- right bottom
-  , -0.5, -0.5, 0,   0, 0, 1,   0, 0   -- left  bottom
+  [ -0.5, -0.5, -0.5,  0.0, 0.0,
+     0.5, -0.5, -0.5,  1.0, 0.0,
+     0.5,  0.5, -0.5,  1.0, 1.0,
+     0.5,  0.5, -0.5,  1.0, 1.0,
+    -0.5,  0.5, -0.5,  0.0, 1.0,
+    -0.5, -0.5, -0.5,  0.0, 0.0,
+
+    -0.5, -0.5,  0.5,  0.0, 0.0,
+     0.5, -0.5,  0.5,  1.0, 0.0,
+     0.5,  0.5,  0.5,  1.0, 1.0,
+     0.5,  0.5,  0.5,  1.0, 1.0,
+    -0.5,  0.5,  0.5,  0.0, 1.0,
+    -0.5, -0.5,  0.5,  0.0, 0.0,
+
+    -0.5,  0.5,  0.5,  1.0, 0.0,
+    -0.5,  0.5, -0.5,  1.0, 1.0,
+    -0.5, -0.5, -0.5,  0.0, 1.0,
+    -0.5, -0.5, -0.5,  0.0, 1.0,
+    -0.5, -0.5,  0.5,  0.0, 0.0,
+    -0.5,  0.5,  0.5,  1.0, 0.0,
+
+     0.5,  0.5,  0.5,  1.0, 0.0,
+     0.5,  0.5, -0.5,  1.0, 1.0,
+     0.5, -0.5, -0.5,  0.0, 1.0,
+     0.5, -0.5, -0.5,  0.0, 1.0,
+     0.5, -0.5,  0.5,  0.0, 0.0,
+     0.5,  0.5,  0.5,  1.0, 0.0,
+
+    -0.5, -0.5, -0.5,  0.0, 1.0,
+     0.5, -0.5, -0.5,  1.0, 1.0,
+     0.5, -0.5,  0.5,  1.0, 0.0,
+     0.5, -0.5,  0.5,  1.0, 0.0,
+    -0.5, -0.5,  0.5,  0.0, 0.0,
+    -0.5, -0.5, -0.5,  0.0, 1.0,
+
+    -0.5,  0.5, -0.5,  0.0, 1.0,
+     0.5,  0.5, -0.5,  1.0, 1.0,
+     0.5,  0.5,  0.5,  1.0, 0.0,
+     0.5,  0.5,  0.5,  1.0, 0.0,
+    -0.5,  0.5,  0.5,  0.0, 0.0,
+    -0.5,  0.5, -0.5,  0.0, 1.0
+  ]
+
+cubes :: [V3 GLfloat]
+cubes =
+  [ V3   0.0    0.0    0.0
+  , V3   2.0    5.0  (-15.0)
+  , V3 (-1.5) (-2.2) (-2.5)
+  , V3 (-3.8) (-2.0) (-12.3)
+  , V3   2.4  (-0.4) (-3.5)
+  , V3 (-1.7)   3.0  (-7.5)
+  , V3   1.3  (-2.0) (-2.5)
+  , V3   1.5    2.0  (-2.5)
+  , V3   1.5    0.2  (-1.5)
+  , V3 (-1.3)   1.0  (-1.5)
   ]
 
 squareIndices :: [GLuint]
@@ -197,11 +259,11 @@ initResources game = do
   withArray square $ \ptr ->
     glBufferData GL_ARRAY_BUFFER (arraySize square) (castPtr ptr) GL_STATIC_DRAW
 
-  -- EBO
-  ebo <- overPtr $ glGenBuffers 1
-  glBindBuffer GL_ELEMENT_ARRAY_BUFFER ebo
-  withArray squareIndices $ \ptr ->
-    glBufferData GL_ELEMENT_ARRAY_BUFFER (arraySize squareIndices) (castPtr ptr) GL_STATIC_DRAW
+  -- -- EBO
+  -- ebo <- overPtr $ glGenBuffers 1
+  -- glBindBuffer GL_ELEMENT_ARRAY_BUFFER ebo
+  -- withArray squareIndices $ \ptr ->
+  --   glBufferData GL_ELEMENT_ARRAY_BUFFER (arraySize squareIndices) (castPtr ptr) GL_STATIC_DRAW
 
   -- Texture
   texture <- overPtr $ glGenTextures 1
@@ -233,18 +295,18 @@ initResources game = do
   -- Link Vertex data with Attributes
   let floatSize = sizeOf (1.0 :: GLfloat)
   posAttrib <- withCString "position" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral posAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 8 * floatSize) nullPtr
+  glVertexAttribPointer (fromIntegral posAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 5 * floatSize) nullPtr
   glEnableVertexAttribArray (fromIntegral posAttrib)
 
   -- Link Texture data with Attributes
   textureAttrib <- withCString "texCoord" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral textureAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 8 * floatSize) (plusPtr nullPtr (6 * floatSize))
+  glVertexAttribPointer (fromIntegral textureAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 5 * floatSize) (plusPtr nullPtr (3 * floatSize))
   glEnableVertexAttribArray (fromIntegral textureAttrib)
 
-  -- Link Color data with Attributes
-  colorAttrib <- withCString "inColor" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral colorAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 8 * floatSize) (plusPtr nullPtr (3 * floatSize))
-  glEnableVertexAttribArray (fromIntegral colorAttrib)
+  -- -- Link Color data with Attributes
+  -- colorAttrib <- withCString "inColor" $ glGetAttribLocation program
+  -- glVertexAttribPointer (fromIntegral colorAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 8 * floatSize) (plusPtr nullPtr (3 * floatSize))
+  -- glEnableVertexAttribArray (fromIntegral colorAttrib)
 
   -- Transformation matrix pointer
   transformP <- malloc
