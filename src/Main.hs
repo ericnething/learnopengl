@@ -95,16 +95,16 @@ main = do
 loop :: SDL.Window -> Set SDL.Keysym -> MouseInputs -> Game -> IO ()
 loop window keys mouse game = do
   (keys', mouse') <- parseEvents keys mouse
-  game' <- updateGame game keys'
+  let game' = updateGame game keys' mouse'
   
-  draw window keys' game'
+  draw window game'
   putStrLn (show mouse')
   
   unless (Set.member escapeKey keys') $
     loop window keys' mouse' game'
 
-updateGame :: Game -> Set SDL.Keysym -> IO Game
-updateGame game keys = return . newGame $ Set.foldr check (V3 0 0 0) keys
+updateGame :: Game -> Set SDL.Keysym -> MouseInputs -> Game
+updateGame game keys mouse = newGame $ Set.foldr check (V3 0 0 0) keys
   where check key acc = case SDL.keysymKeycode key of
           SDLK_w -> acc ^+^ front
           SDLK_s -> acc ^-^ front
@@ -119,8 +119,8 @@ updateGame game keys = return . newGame $ Set.foldr check (V3 0 0 0) keys
 -- | Convert degrees to radians
 toRadians = (*) (pi / 180)
 
-draw :: SDL.Window -> Set SDL.Keysym -> Game -> IO ()
-draw window keys game = do
+draw :: SDL.Window -> Game -> IO ()
+draw window game = do
 
   glClearColor 0.1 0.2 0.3 1
   glClear GL_COLOR_BUFFER_BIT
