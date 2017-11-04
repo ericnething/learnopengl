@@ -32,10 +32,27 @@ data Game = Game
   , viewP       :: Ptr (M44 GLfloat)
   , projectionP :: Ptr (M44 GLfloat)
   , gameValue   :: V3 GLfloat
+  , cameraPos   :: V3 GLfloat
+  , cameraUp    :: V3 GLfloat
+  , cameraFront :: V3 GLfloat
+  , cameraSpeed :: GLfloat
   } deriving Show
 
 initialGameState :: Game
-initialGameState = Game 0 0 0 nullPtr nullPtr nullPtr nullPtr (V3 0.0 0.0 0.0)
+initialGameState = Game
+  { runProgram  = 0
+  , texture     = 0
+  , vao         = 0
+  , transformP  = nullPtr
+  , modelP      = nullPtr
+  , viewP       = nullPtr
+  , projectionP = nullPtr
+  , gameValue   = V3 0 0 0
+  , cameraPos   = V3 0 0 3
+  , cameraUp    = V3 0 1 0
+  , cameraFront = V3 0 0 (-1)
+  , cameraSpeed = 0.05
+  }
 
 main :: IO ()
 main = do
@@ -75,14 +92,17 @@ loop window keys game = do
     loop window keys' game'
 
 updateGame :: Game -> Set SDL.Keysym -> IO Game
-updateGame game keys = return . newGame $ Set.foldr check (gameValue game) keys
+updateGame game keys = return . newGame $ Set.foldr check (V3 0 0 0) keys
   where check key acc = case SDL.keysymKeycode key of
-          SDLK_UP    -> acc ^+^ V3 0.0  0.01 0.0
-          SDLK_DOWN  -> acc ^-^ V3 0.0  0.01 0.0
-          SDLK_RIGHT -> acc ^+^ V3 0.01 0.0  0.0
-          SDLK_LEFT  -> acc ^-^ V3 0.01 0.0  0.0
+          SDLK_UP    -> acc ^+^ front
+          SDLK_DOWN  -> acc ^-^ front
+          SDLK_RIGHT -> acc ^+^ normalize (cross front up)
+          SDLK_LEFT  -> acc ^-^ normalize (cross front up)
           _          -> acc
-        newGame v = game { gameValue = v }
+        newGame v = game { cameraPos = cameraPos game ^+^ (speed *^ normalize v) }
+        speed = cameraSpeed game
+        front = cameraFront game
+        up    = cameraUp    game
 
 -- | Convert degrees to radians
 toRadians = (*) (pi / 180)
@@ -101,14 +121,14 @@ draw window keys game = do
   glBindVertexArray (vao game)
 
   -- Uniforms
-  let transformMatrix = mkTransformationMat identity (gameValue game)
-  poke (transformP game) transformMatrix
-  transform <- withCString "transform" $ glGetUniformLocation (runProgram game)
-  glUniformMatrix4fv transform 1 GL_TRUE (castPtr (transformP game))
-
   model <- withCString "model" $ glGetUniformLocation (runProgram game)
 
-  let viewMatrix = mkTransformationMat identity (V3 0 0 (-3.0))
+  let V3 x y _   = gameValue game
+      radius     = 3.0
+      cameraPosition = cameraPos game
+      targetPosition = cameraPosition ^+^ cameraFront game
+      viewMatrix = lookAt cameraPosition targetPosition (cameraUp game)
+
   poke (viewP game) viewMatrix
   view <- withCString "view" $ glGetUniformLocation (runProgram game)
   glUniformMatrix4fv view 1 GL_TRUE (castPtr (viewP game))
@@ -119,7 +139,6 @@ draw window keys game = do
   glUniformMatrix4fv projection 1 GL_TRUE (castPtr (projectionP game))
 
   -- Draw
-  -- glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_INT nullPtr
   forM_ cubes $ \cube -> do
     let modelMatrix = mkTransformation (axisAngle (V3 1 0 0) (toRadians (-55))) cube
     poke (modelP game) modelMatrix
@@ -162,22 +181,6 @@ parseEvents keys = do
         parseEvents (Set.insert escapeKey keys)
 
       _ -> parseEvents keys
-
-vertices :: [GLfloat]
-vertices =
-  [  0.0,  0.5
-  ,  0.5, -0.5
-  , -0.5, -0.5
-  ]
-
--- square :: [GLfloat]
--- square =
---   -- position     colors     textures
---   [ -0.5,  0.5, 0.5,   1, 1, 0,   0, 1   -- left  top
---   ,  0.5,  0.5, 0.5,   1, 0, 0,   1, 1   -- right top
---   ,  0.5, -0.5, 0.5,   0, 1, 0,   1, 0   -- right bottom
---   , -0.5, -0.5, 0.5,   0, 0, 1,   0, 0   -- left  bottom
---   ]
 
 square :: [GLfloat]
 square =
@@ -238,12 +241,6 @@ cubes =
   , V3 (-1.3)   1.0  (-1.5)
   ]
 
-squareIndices :: [GLuint]
-squareIndices =
-  [ 0, 1, 2
-  , 2, 3, 0
-  ]
-
 arraySize array = fromIntegral $ length array * sizeOf (1.0 :: GLfloat)
 
 initResources :: Game -> IO Game
@@ -258,12 +255,6 @@ initResources game = do
   glBindBuffer GL_ARRAY_BUFFER vbo
   withArray square $ \ptr ->
     glBufferData GL_ARRAY_BUFFER (arraySize square) (castPtr ptr) GL_STATIC_DRAW
-
-  -- -- EBO
-  -- ebo <- overPtr $ glGenBuffers 1
-  -- glBindBuffer GL_ELEMENT_ARRAY_BUFFER ebo
-  -- withArray squareIndices $ \ptr ->
-  --   glBufferData GL_ELEMENT_ARRAY_BUFFER (arraySize squareIndices) (castPtr ptr) GL_STATIC_DRAW
 
   -- Texture
   texture <- overPtr $ glGenTextures 1
@@ -302,11 +293,6 @@ initResources game = do
   textureAttrib <- withCString "texCoord" $ glGetAttribLocation program
   glVertexAttribPointer (fromIntegral textureAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 5 * floatSize) (plusPtr nullPtr (3 * floatSize))
   glEnableVertexAttribArray (fromIntegral textureAttrib)
-
-  -- -- Link Color data with Attributes
-  -- colorAttrib <- withCString "inColor" $ glGetAttribLocation program
-  -- glVertexAttribPointer (fromIntegral colorAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 8 * floatSize) (plusPtr nullPtr (3 * floatSize))
-  -- glEnableVertexAttribArray (fromIntegral colorAttrib)
 
   -- Transformation matrix pointer
   transformP <- malloc
