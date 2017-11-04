@@ -54,6 +54,17 @@ initialGameState = Game
   , cameraSpeed = 0.05
   }
 
+data MouseInputs = MouseInputs
+  { mousePosition :: V2 Int32
+  , mouseRelative :: V2 Int32
+  } deriving Show
+
+initialMouse :: MouseInputs
+initialMouse = MouseInputs
+  { mousePosition = V2 0 0
+  , mouseRelative = V2 0 0
+  }
+
 main :: IO ()
 main = do
 
@@ -75,21 +86,22 @@ main = do
 
   game <- initResources initialGameState
   
-  loop window Set.empty game
+  loop window Set.empty initialMouse game
 
   SDL.glDeleteContext renderer
   SDL.destroyWindow window
   SDL.quit
 
-loop :: SDL.Window -> Set SDL.Keysym -> Game -> IO ()
-loop window keys game = do
-  keys' <- parseEvents keys
+loop :: SDL.Window -> Set SDL.Keysym -> MouseInputs -> Game -> IO ()
+loop window keys mouse game = do
+  (keys', mouse') <- parseEvents keys mouse
   game' <- updateGame game keys'
   
   draw window keys' game'
+  putStrLn (show mouse')
   
   unless (Set.member escapeKey keys') $
-    loop window keys' game'
+    loop window keys' mouse' game'
 
 updateGame :: Game -> Set SDL.Keysym -> IO Game
 updateGame game keys = return . newGame $ Set.foldr check (V3 0 0 0) keys
@@ -154,8 +166,8 @@ draw window keys game = do
 escapeKey :: SDL.Keysym
 escapeKey = SDL.Keysym SDL_SCANCODE_ESCAPE SDLK_ESCAPE KMOD_NONE
 
-parseEvents :: Set SDL.Keysym -> IO (Set SDL.Keysym)
-parseEvents keys = do
+parseEvents :: Set SDL.Keysym -> MouseInputs -> IO (Set SDL.Keysym, MouseInputs)
+parseEvents keys mouse = do
   
   let pollEvent = alloca $ \ptr ->
         do r <- SDL.pollEvent ptr
@@ -166,21 +178,29 @@ parseEvents keys = do
   mevent <- pollEvent
 
   case mevent of
-   Nothing -> return keys
+   Nothing -> return (keys, mouse)
    Just event ->
 
      case event of
 
       SDL.KeyboardEvent SDL_KEYUP _ _ _ _ k ->
-        parseEvents (Set.delete k keys)
+        parseEvents (Set.delete k keys) mouse
 
       SDL.KeyboardEvent SDL_KEYDOWN _ _ _ _ k ->
-        parseEvents (Set.insert k keys)
+        parseEvents (Set.insert k keys) mouse
+
+      SDL.MouseMotionEvent { SDL.mouseMotionEventX    = x
+                           , SDL.mouseMotionEventY    = y
+                           , SDL.mouseMotionEventXRel = dx
+                           , SDL.mouseMotionEventYRel = dy
+                           } ->
+        parseEvents keys (mouse { mousePosition = V2 x  y
+                                , mouseRelative = V2 dx dy })
 
       SDL.QuitEvent{} ->
-        parseEvents (Set.insert escapeKey keys)
+        parseEvents (Set.insert escapeKey keys) mouse
 
-      _ -> parseEvents keys
+      _ -> parseEvents keys mouse
 
 square :: [GLfloat]
 square =
