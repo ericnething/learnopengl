@@ -106,11 +106,11 @@ loop window keys mouse game = do
 updateGame :: Game -> Set SDL.Keysym -> IO Game
 updateGame game keys = return . newGame $ Set.foldr check (V3 0 0 0) keys
   where check key acc = case SDL.keysymKeycode key of
-          SDLK_UP    -> acc ^+^ front
-          SDLK_DOWN  -> acc ^-^ front
-          SDLK_RIGHT -> acc ^+^ normalize (cross front up)
-          SDLK_LEFT  -> acc ^-^ normalize (cross front up)
-          _          -> acc
+          SDLK_w -> acc ^+^ front
+          SDLK_s -> acc ^-^ front
+          SDLK_d -> acc ^+^ normalize (cross front up)
+          SDLK_a -> acc ^-^ normalize (cross front up)
+          _      -> acc
         newGame v = game { cameraPos = cameraPos game ^+^ (speed *^ normalize v) }
         speed = cameraSpeed game
         front = cameraFront game
@@ -135,9 +135,7 @@ draw window keys game = do
   -- Uniforms
   model <- withCString "model" $ glGetUniformLocation (runProgram game)
 
-  let V3 x y _   = gameValue game
-      radius     = 3.0
-      cameraPosition = cameraPos game
+  let cameraPosition = cameraPos game
       targetPosition = cameraPosition ^+^ cameraFront game
       viewMatrix = lookAt cameraPosition targetPosition (cameraUp game)
 
