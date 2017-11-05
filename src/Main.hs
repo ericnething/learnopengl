@@ -21,6 +21,7 @@ import qualified Data.Vector.Storable as VS
 import           Data.Foldable (forM_)
 import           Linear
 import           Data.Fixed (mod')
+import           Data.Semigroup ((<>))
 
 import           Shader
 import           Util
@@ -304,6 +305,32 @@ cubes =
 
 arraySize array = fromIntegral $ length array * sizeOf (1.0 :: GLfloat)
 
+loadTexture :: FilePath -> IO GLuint
+loadTexture filepath = do
+  texture <- overPtr $ glGenTextures 1
+  glBindTexture GL_TEXTURE_2D texture
+  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_S GL_REPEAT
+  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_T GL_REPEAT
+  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR
+  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR
+  Image width height texData <- do
+    eimage <- readImage filepath
+    case eimage of
+      Left _      -> error $ filepath <> " texture failed to load"
+      Right image -> pure $ convertRGB8 image
+  VS.unsafeWith texData $ \ptr ->
+    glTexImage2D GL_TEXTURE_2D 0 GL_RGB (fromIntegral width) (fromIntegral height) 0 GL_RGB GL_UNSIGNED_BYTE (castPtr ptr)
+  glGenerateMipmap GL_TEXTURE_2D
+  glBindTexture GL_TEXTURE_2D 0
+  pure texture
+
+setVertexAttribute :: GLuint -> String -> GLint -> Int -> Int -> IO ()
+setVertexAttribute program name vertices stride offset = do
+  let floatSize = sizeOf (1.0 :: GLfloat)
+  attrib <- withCString name $ glGetAttribLocation program
+  glVertexAttribPointer (fromIntegral attrib) vertices GL_FLOAT GL_FALSE (fromIntegral $ stride * floatSize) (plusPtr nullPtr (offset * floatSize))
+  glEnableVertexAttribArray (fromIntegral attrib)
+
 initResources :: Game -> IO Game
 initResources game = do
 
@@ -318,19 +345,7 @@ initResources game = do
     glBufferData GL_ARRAY_BUFFER (arraySize square) (castPtr ptr) GL_STATIC_DRAW
 
   -- Texture
-  texture <- overPtr $ glGenTextures 1
-  glBindTexture GL_TEXTURE_2D texture
-  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_S GL_REPEAT
-  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_T GL_REPEAT
-  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR
-  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR
-  Image width height texData <- convertRGB8 <$>
-                                (either (error "texture failed to load") pure =<<
-                                readImage "src/textures/container.jpg")
-  VS.unsafeWith texData $ \ptr ->
-    glTexImage2D GL_TEXTURE_2D 0 GL_RGB (fromIntegral width) (fromIntegral height) 0 GL_RGB GL_UNSIGNED_BYTE (castPtr ptr)
-  glGenerateMipmap GL_TEXTURE_2D
-  glBindTexture GL_TEXTURE_2D 0
+  texture <- loadTexture "src/textures/container.jpg"
 
   -- Vertex Shader
   vertexShader <- glCreateShader GL_VERTEX_SHADER
@@ -345,15 +360,10 @@ initResources game = do
   glUseProgram program
 
   -- Link Vertex data with Attributes
-  let floatSize = sizeOf (1.0 :: GLfloat)
-  posAttrib <- withCString "position" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral posAttrib) 3 GL_FLOAT GL_FALSE (fromIntegral $ 5 * floatSize) nullPtr
-  glEnableVertexAttribArray (fromIntegral posAttrib)
+  setVertexAttribute program "position" 3 5 0
 
   -- Link Texture data with Attributes
-  textureAttrib <- withCString "texCoord" $ glGetAttribLocation program
-  glVertexAttribPointer (fromIntegral textureAttrib) 2 GL_FLOAT GL_FALSE (fromIntegral $ 5 * floatSize) (plusPtr nullPtr (3 * floatSize))
-  glEnableVertexAttribArray (fromIntegral textureAttrib)
+  setVertexAttribute program "texCoord" 2 5 3
 
   -- Transformation matrix pointer
   transformP <- malloc
