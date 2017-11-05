@@ -30,7 +30,6 @@ data Game = Game
   { runProgram  :: GLuint
   , texture     :: GLuint
   , vao         :: GLuint
-  , transformP  :: Ptr (M44 GLfloat)
   , modelP      :: Ptr (M44 GLfloat)
   , viewP       :: Ptr (M44 GLfloat)
   , projectionP :: Ptr (M44 GLfloat)
@@ -48,7 +47,6 @@ initialGameState = Game
   { runProgram  = 0
   , texture     = 0
   , vao         = 0
-  , transformP  = nullPtr
   , modelP      = nullPtr
   , viewP       = nullPtr
   , projectionP = nullPtr
@@ -100,8 +98,7 @@ main = do
   
   loop window Set.empty initialMouse game
 
-  mapM_ free [ transformP game
-             , modelP game
+  mapM_ free [ modelP game
              , viewP game
              , projectionP game
              ]
@@ -366,7 +363,6 @@ initResources game = do
   setVertexAttribute program "texCoord" 2 5 3
 
   -- Transformation matrix pointer
-  transformP <- malloc
   modelP <- malloc
   viewP <- malloc
   projectionP <- malloc
@@ -375,7 +371,6 @@ initResources game = do
     { runProgram = program
     , texture = texture
     , vao = vao
-    , transformP = transformP
     , modelP = modelP
     , viewP = viewP
     , projectionP = projectionP
