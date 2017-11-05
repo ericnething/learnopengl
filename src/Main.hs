@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Main where
 
@@ -36,6 +37,8 @@ data Game = Game
   , cameraUp    :: V3 GLfloat
   , cameraFront :: V3 GLfloat
   , cameraSpeed :: GLfloat
+  , cameraPitch :: GLfloat
+  , cameraYaw   :: GLfloat
   } deriving Show
 
 initialGameState :: Game
@@ -52,17 +55,21 @@ initialGameState = Game
   , cameraUp    = V3 0 1 0
   , cameraFront = V3 0 0 (-1)
   , cameraSpeed = 0.05
+  , cameraPitch = 0
+  , cameraYaw   = (-90)
   }
 
 data MouseInputs = MouseInputs
   { mousePosition :: V2 Int32
   , mouseRelative :: V2 Int32
+  , mousePositionOld :: Maybe (V2 Int32)
   } deriving Show
 
 initialMouse :: MouseInputs
 initialMouse = MouseInputs
   { mousePosition = V2 0 0
   , mouseRelative = V2 0 0
+  , mousePositionOld = Nothing
   }
 
 main :: IO ()
@@ -99,12 +106,35 @@ loop window keys mouse game = do
   
   draw window game'
   putStrLn (show mouse')
+  putStrLn (show game')
   
   unless (Set.member escapeKey keys') $
     loop window keys' mouse' game'
 
 updateGame :: Game -> Set SDL.Keysym -> MouseInputs -> Game
-updateGame game keys mouse = newGame $ Set.foldr check (V3 0 0 0) keys
+updateGame game keys mouse = updateKeyboard keys .
+                             updateMouse mouse $
+                             game
+
+updateMouse :: MouseInputs -> Game -> Game
+updateMouse (MouseInputs {..}) game =
+  game { cameraFront = front
+       , cameraPitch = pitchDegrees
+       , cameraYaw   = yawDegrees
+       }
+  where front = normalize $ V3 (cos pitch * cos yaw) (sin pitch) (cos pitch * sin yaw)
+        pitch = toRadians pitchDegrees
+        yaw   = toRadians yawDegrees
+        pitchDegrees = cameraPitch game + ((fromIntegral dy) * sensitivity)
+        yawDegrees   = cameraYaw   game + ((fromIntegral dx) * sensitivity)
+        sensitivity = 0.005
+        V2 x y = mousePosition
+        V2 dx dy = case mousePositionOld of
+          Nothing -> mousePosition
+          Just (V2 x' y') -> V2 (x - x') (y' - y)
+
+updateKeyboard :: Set SDL.Keysym -> Game -> Game
+updateKeyboard keys game = newGame $ Set.foldr check (V3 0 0 0) keys
   where check key acc = case SDL.keysymKeycode key of
           SDLK_w -> acc ^+^ front
           SDLK_s -> acc ^-^ front
@@ -193,7 +223,8 @@ parseEvents keys mouse = do
                            , SDL.mouseMotionEventYRel = dy
                            } ->
         parseEvents keys (mouse { mousePosition = V2 x  y
-                                , mouseRelative = V2 dx dy })
+                                , mouseRelative = V2 dx dy
+                                , mousePositionOld = Just (mousePosition mouse) })
 
       SDL.QuitEvent{} ->
         parseEvents (Set.insert escapeKey keys) mouse
