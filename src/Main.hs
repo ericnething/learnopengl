@@ -115,7 +115,7 @@ loop window keys mouse game = do
   putStrLn (show game')
   
   unless (Set.member escapeKey keys') $
-    loop window keys' mouse' game'
+    loop window keys' initialMouse game'
 
 updateGame :: Game -> Set SDL.Keysym -> MouseInputs -> Game
 updateGame game keys mouse = updateKeyboard keys .
@@ -131,13 +131,10 @@ updateMouse (MouseInputs {..}) game =
   where front = normalize $ V3 (cos pitch * cos yaw) (sin pitch) (cos pitch * sin yaw)
         pitch = toRadians pitchDegrees
         yaw   = toRadians yawDegrees
-        pitchDegrees = cameraPitch game + ((fromIntegral dy) * sensitivity)
-        yawDegrees   = cameraYaw   game + ((fromIntegral dx) * sensitivity)
-        sensitivity = 0.05
-        V2 x y = mousePosition
-        V2 dx dy = case mousePositionOld of
-          Nothing -> mousePosition
-          Just (V2 x' y') -> V2 (x - x') (y' - y)
+        pitchDegrees = min (max (cameraPitch game + negate dy) (-89)) 89
+        yawDegrees   = cameraYaw   game + dx
+        sensitivity = 0.5
+        V2 dx dy = (* sensitivity) . fromIntegral <$> mouseRelative
 
 updateKeyboard :: Set SDL.Keysym -> Game -> Game
 updateKeyboard keys game = newGame $ Set.foldr check (V3 0 0 0) keys
