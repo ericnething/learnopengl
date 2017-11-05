@@ -22,6 +22,7 @@ import           Data.Foldable (forM_)
 import           Linear
 import           Data.Fixed (mod')
 import           Data.Semigroup ((<>))
+import           Data.Bits ((.|.))
 
 import           Shader
 import           Util
@@ -163,8 +164,7 @@ draw :: SDL.Window -> Game -> IO ()
 draw window game = do
 
   glClearColor 0.1 0.2 0.3 1
-  glClear GL_COLOR_BUFFER_BIT
-  glClear GL_DEPTH_BUFFER_BIT
+  glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
   glUseProgram (runProgram game)
 
