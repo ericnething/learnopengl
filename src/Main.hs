@@ -95,6 +95,12 @@ main = do
   
   loop window Set.empty initialMouse game
 
+  mapM_ free [ transformP game
+             , modelP game
+             , viewP game
+             , projectionP game
+             ]
+
   SDL.glDeleteContext renderer
   SDL.destroyWindow window
   SDL.quit
