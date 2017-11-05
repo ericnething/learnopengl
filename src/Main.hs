@@ -127,7 +127,7 @@ updateMouse (MouseInputs {..}) game =
         yaw   = toRadians yawDegrees
         pitchDegrees = cameraPitch game + ((fromIntegral dy) * sensitivity)
         yawDegrees   = cameraYaw   game + ((fromIntegral dx) * sensitivity)
-        sensitivity = 0.005
+        sensitivity = 0.05
         V2 x y = mousePosition
         V2 dx dy = case mousePositionOld of
           Nothing -> mousePosition
