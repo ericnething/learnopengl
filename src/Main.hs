@@ -344,17 +344,10 @@ initResources game = do
   -- Texture
   texture <- loadTexture "src/textures/container.jpg"
 
-  -- Vertex Shader
-  vertexShader <- glCreateShader GL_VERTEX_SHADER
-  compileShader vertexShader "src/shaders/triangle.vertex.glsl"
-
-  -- Fragment Shader
-  fragmentShader <- glCreateShader GL_FRAGMENT_SHADER
-  compileShader fragmentShader "src/shaders/triangle.fragment.glsl"
-
   -- Shader Program
-  program <- createProgram vertexShader fragmentShader
-  glUseProgram program
+  program <- createProgram
+             "src/shaders/triangle.vertex.glsl"
+             "src/shaders/triangle.fragment.glsl"
 
   -- Link Vertex data with Attributes
   setVertexAttribute program "position" 3 5 0

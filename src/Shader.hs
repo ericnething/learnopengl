@@ -12,10 +12,10 @@ import           Data.ByteString.Char8 as BS (pack)
 import           Util
 import           Data.Char (chr)
 
-type Shader = GLuint
+type ShaderType = GLuint
 type Program = GLuint
 
-compileShader :: Shader -> FilePath -> IO ()
+compileShader :: ShaderType -> FilePath -> IO ()
 compileShader shader path = do
 
   -- Read the source and compile the shader
@@ -36,11 +36,20 @@ compileShader shader path = do
 
     putStrLn $ map castCCharToChar errors
   
-createProgram :: Shader -> Shader -> IO Program
+createProgram :: FilePath -> FilePath -> IO Program
 createProgram vertex fragment = do
+  -- Compile vertex shader
+  vertexShader <- glCreateShader GL_VERTEX_SHADER
+  compileShader vertexShader vertex
+
+  -- Compile fragment shader
+  fragmentShader <- glCreateShader GL_FRAGMENT_SHADER
+  compileShader fragmentShader fragment
+
+  -- Attach shaders
   program <- glCreateProgram
-  glAttachShader program vertex
-  glAttachShader program fragment
+  glAttachShader program vertexShader
+  glAttachShader program fragmentShader
 
   withCString "outColor" $ glBindFragDataLocation program 0
 
