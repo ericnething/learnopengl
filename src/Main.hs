@@ -131,8 +131,8 @@ updateMouse (MouseInputs {..}) game =
   where front = normalize $ V3 (cos pitch * cos yaw) (sin pitch) (cos pitch * sin yaw)
         pitch = toRadians pitchDegrees
         yaw   = toRadians yawDegrees
-        pitchDegrees = min (max (cameraPitch game + negate dy) (-89)) 89
-        yawDegrees   = cameraYaw   game + dx
+        pitchDegrees = min 89 . max (-89) $ cameraPitch game + negate dy
+        yawDegrees   = cameraYaw game + dx
         sensitivity = 0.5
         V2 dx dy = (* sensitivity) . fromIntegral <$> mouseRelative
 
