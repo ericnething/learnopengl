@@ -20,6 +20,7 @@ import           Codec.Picture (readImage, convertRGB8, Image(..))
 import qualified Data.Vector.Storable as VS
 import           Data.Foldable (forM_)
 import           Linear
+import           Data.Fixed (mod')
 
 import           Shader
 import           Util
@@ -67,7 +68,7 @@ data MouseInputs = MouseInputs
 
 initialMouse :: MouseInputs
 initialMouse = MouseInputs
-  { mousePosition = V2 0 0
+  { mousePosition = V2 400 300 
   , mouseRelative = V2 0 0
   , mousePositionOld = Nothing
   }
@@ -76,6 +77,9 @@ main :: IO ()
 main = do
 
   SDL.init SDL_INIT_EVERYTHING
+
+  SDL.showCursor 0
+  SDL.captureMouse True
 
   window <- withCString "gl and sdl2 basics" $ \t ->
     SDL.createWindow t 0 0 800 600 SDL_WINDOW_SHOWN
@@ -109,7 +113,9 @@ loop :: SDL.Window -> Set SDL.Keysym -> MouseInputs -> Game -> IO ()
 loop window keys mouse game = do
   (keys', mouse') <- parseEvents keys mouse
   let game' = updateGame game keys' mouse'
-  
+
+  SDL.warpMouseInWindow window 400 300
+
   draw window game'
   putStrLn (show mouse')
   putStrLn (show game')
@@ -132,9 +138,12 @@ updateMouse (MouseInputs {..}) game =
         pitch = toRadians pitchDegrees
         yaw   = toRadians yawDegrees
         pitchDegrees = min 89 . max (-89) $ cameraPitch game + negate dy
-        yawDegrees   = cameraYaw game + dx
-        sensitivity = 0.5
-        V2 dx dy = (* sensitivity) . fromIntegral <$> mouseRelative
+        yawDegrees   = (`mod'` 360) $ cameraYaw game + dx
+        sensitivity = 0.05
+        V2 dx dy = (* sensitivity) . fromIntegral <$>
+                   if mouseRelative == mousePosition
+                   then V2 0 0
+                   else mouseRelative
 
 updateKeyboard :: Set SDL.Keysym -> Game -> Game
 updateKeyboard keys game = newGame $ Set.foldr check (V3 0 0 0) keys
