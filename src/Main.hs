@@ -116,8 +116,8 @@ loop window keys mouse game = do
   SDL.warpMouseInWindow window 400 300
 
   draw window game'
-  putStrLn (show mouse')
-  putStrLn (show game')
+  -- putStrLn (show mouse')
+  -- putStrLn (show game')
   
   unless (Set.member escapeKey keys') $
     loop window keys' initialMouse game'

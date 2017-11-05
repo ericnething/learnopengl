@@ -66,4 +66,8 @@ createProgram vertex fragment = do
   
     putStrLn $ map castCCharToChar errors
 
+  -- Delete shaders
+  glDeleteShader vertexShader
+  glDeleteShader fragmentShader
+
   return program
